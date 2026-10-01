@@ -1,0 +1,43 @@
+# iADD: Improving Alignment and Diversity in Diffusion Policy Optimization
+
+> iADD is a training-time method for reinforcement-learning fine-tuning of diffusion models (DDPO and variants). It combines a sparse, incrementally expanding timestep-update curriculum with discrete-time Feynman-Kac branch/resample sampling, improving reward alignment without sacrificing diversity. Evaluated on text-to-image generation (Stable Diffusion v1.4 + LoRA), vanishing-point correction, and 3D indoor scene generation (MiDiffusion on 3D-FRONT).
+
+Authors: Ashok Prasad Neupane*, Saugat Adhikari* (Pulchowk Campus, IOE, Tribhuvan University), Pramish Paudel* (INSAIT, Sofia University), Ajad Chhatkuli and Danda Pani Paudel (NAAMII; INSAIT, Sofia University). *Equal contribution.
+
+## Links
+
+- [Project page](https://saugat2002.github.io/iadd/): overview, figures and result tables
+- [Paper PDF](https://saugat2002.github.io/iadd/static/pdfs/iADD_paper.pdf): preprint (no arXiv ID yet)
+- [Code](https://github.com/Saugat2002/iADD)
+- [Demo video](https://saugat2002.github.io/iadd/static/videos/iadd_demo.mp4): walkthrough of the tradeoff problem, the curriculum and FK sampling
+
+## Problem
+
+RL post-training of diffusion models (e.g. DDPO) optimizes a reverse diffusion process under a reward, but current approaches gain reward at the cost of diversity and visual quality. Late-timestep-only updates (B2-DiffuRL) are not enough: the paper argues mathematically that only-latter-timestep updates may be harmful for diversity.
+
+## Method
+
+1. Incremental sparse timestep updates: each training stage updates a randomly selected subset of denoising timesteps, with the subset size growing across stages, from a handful of high-leverage early steps to nearly the full trajectory. Theory: uniform (early-inclusive) timestep sampling gives a larger output perturbation than late-only (Generative Reach), and sparse updates better preserve the prior's probability volume than updating all timesteps (Volume Preservation).
+2. Feynman-Kac path guidance: a discrete-time Feynman-Kac particle filter branches and resamples partial denoising trajectories during training (not only at inference), using reward-derived potentials to prune unpromising paths and branch promising ones. This improves sample efficiency and rare-event discovery.
+
+## Key results
+
+Each method is evaluated at its best reward-diversity operating point. Baselines: pretrained model, DDPO, B2-DiffuRL.
+
+- Image generation (CLIPScore reward): iADD reward 0.3553 vs DDPO 0.3417 and B2-DiffuRL 0.3452; Inception Score 1.3241 vs 1.2786 and 1.2728; rarity 66.85% vs 24.81% and 24.22%; reward-diversity AUC 77.7% vs 53.8% and 58.7%.
+- 3D indoor scene: collision 59.20% vs DDPO 63.39% and B2-DiffuRL 64.06% (pretrained 53.87%); CKL 6.13% vs 7.73% and 6.28%.
+- Vanishing point: reward 0.7763 vs 0.6815 and 0.6486; rarity 95.11% vs 21.33% and 31.11%.
+- Against GRPO-style methods (animal-activities template): iADD AUC 83.7% vs DanceGRPO 39.3% and BranchGRPO 43.73%; the iADD+GRPO hybrid reaches the highest CLIP (0.4126) and rarity (88.33%).
+
+## Citation
+
+```bibtex
+@misc{neupane2026iadd,
+  title   = {iADD: Improving Alignment and Diversity in Diffusion Policy Optimization},
+  author  = {Neupane, Ashok Prasad and Adhikari, Saugat and Paudel, Pramish
+             and Chhatkuli, Ajad and Paudel, Danda Pani},
+  year    = {2026},
+  note    = {Preprint},
+  url     = {https://github.com/Saugat2002/iADD}
+}
+```

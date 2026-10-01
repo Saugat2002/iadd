@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>iADD: Improving Alignment and Diversity in Diffusion Policy Optimization</title>
-  <meta name="description" content="iADD is a training-time method for RL fine-tuning of diffusion models that combines a sparse, incrementally-expanding timestep update curriculum with discrete-time Feynman-Kac branch/resample sampling, improving reward alignment without sacrificing diversity.">
+  <meta name="description" content="iADD improves RL fine-tuning of diffusion models: sparse incremental timestep updates plus Feynman-Kac branch/resample training give better alignment-diversity tradeoffs.">
   <meta name="keywords" content="iADD, diffusion policy optimization, reinforcement learning, DDPO, Feynman-Kac, particle filtering, branch and resample, diffusion models, alignment-diversity tradeoff, mode collapse, rare events, vanishing point correction, 3D scene generation, Stable Diffusion, LoRA, GRPO">
   <meta name="author" content="Ashok Prasad Neupane, Saugat Adhikari, Pramish Paudel, Ajad Chhatkuli, Danda Pani Paudel">
   <meta name="theme-color" content="#ffffff">
@@ -41,6 +41,7 @@
   <meta name="twitter:image" content="https://saugat2002.github.io/iadd/static/images/method.png"/>
   <meta name="twitter:image:alt" content="iADD method overview: Feynman-Kac branching and incremental timestep updates"/>
 
+  <link rel="alternate" type="text/plain" title="LLM-readable summary" href="./llms.txt">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
@@ -69,6 +70,19 @@
     "codeRepository": "https://github.com/Saugat2002/iADD",
     "image": "https://saugat2002.github.io/iadd/static/images/method.png",
     "about": ["Diffusion models", "Reinforcement learning", "Feynman-Kac sampling", "Policy optimization"]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    "name": "iADD: Improving Alignment and Diversity in Diffusion Policy Optimization (demo video)",
+    "description": "A walkthrough of iADD: the alignment-diversity tradeoff problem, the incremental timestep curriculum, and Feynman-Kac branch/resample sampling.",
+    "thumbnailUrl": "https://saugat2002.github.io/iadd/static/images/method.png",
+    "uploadDate": "2026-10-01",
+    "contentUrl": "https://saugat2002.github.io/iadd/static/videos/iadd_demo.mp4",
+    "embedUrl": "https://saugat2002.github.io/iadd/#video",
+    "encodingFormat": "video/mp4"
   }
   </script>
 </head>
