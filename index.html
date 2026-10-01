@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iADD: Improving Alignment and Diversity in Diffusion Policy Optimization</title>
+  <meta name="description" content="iADD is a training-time method for RL fine-tuning of diffusion models that combines a sparse, incrementally-expanding timestep update curriculum with discrete-time Feynman-Kac branch/resample sampling, improving reward alignment without sacrificing diversity.">
+  <meta name="keywords" content="iADD, diffusion policy optimization, reinforcement learning, DDPO, Feynman-Kac, particle filtering, branch and resample, diffusion models, alignment-diversity tradeoff, mode collapse, rare events, vanishing point correction, 3D scene generation, Stable Diffusion, LoRA, GRPO">
+  <meta name="author" content="Ashok Prasad Neupane, Saugat Adhikari, Pramish Paudel, Ajad Chhatkuli, Danda Pani Paudel">
+  <meta name="theme-color" content="#ffffff">
+
+  <link rel="canonical" href="https://saugat2002.github.io/iADD/"/>
+  <meta name="robots" content="index, follow, max-image-preview:large"/>
+
+  <!-- Highwire Press tags: this is what Google Scholar actually reads -->
+  <meta name="citation_title" content="iADD: Improving Alignment and Diversity in Diffusion Policy Optimization"/>
+  <meta name="citation_author" content="Neupane, Ashok Prasad"/>
+  <meta name="citation_author" content="Adhikari, Saugat"/>
+  <meta name="citation_author" content="Paudel, Pramish"/>
+  <meta name="citation_author" content="Chhatkuli, Ajad"/>
+  <meta name="citation_author" content="Paudel, Danda Pani"/>
+  <meta name="citation_publication_date" content="2026/10/01"/>
+  <meta name="citation_online_date" content="2026/10/01"/>
+  <!-- TODO: swap to arXiv link when ID is live -->
+  <meta name="citation_pdf_url" content="https://saugat2002.github.io/iADD/static/pdfs/iADD_paper.pdf"/>
+  <meta name="citation_technical_report_institution" content="Pulchowk Campus, IOE Tribhuvan University / NAAMII / INSAIT"/>
+  <meta name="citation_keywords" content="diffusion policy optimization; reinforcement learning; Feynman-Kac; DDPO; alignment-diversity tradeoff"/>
+
+  <meta property="og:type" content="article"/>
+  <meta property="og:site_name" content="iADD"/>
+  <meta property="og:title" content="iADD: Improving Alignment and Diversity in Diffusion Policy Optimization"/>
+  <meta property="og:description" content="A training-time method that combines sparse incremental-timestep updates with discrete-time Feynman-Kac branch/resample sampling for better alignment-diversity tradeoffs in diffusion RL fine-tuning."/>
+  <meta property="og:url" content="https://saugat2002.github.io/iADD/"/>
+  <meta property="og:image" content="https://saugat2002.github.io/iADD/static/images/method.png"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="530"/>
+  <meta property="og:image:alt" content="iADD method overview: Feynman-Kac branching and incremental timestep updates"/>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="iADD: Improving Alignment and Diversity in Diffusion Policy Optimization"/>
+  <meta name="twitter:description" content="A training-time method that combines sparse incremental-timestep updates with discrete-time Feynman-Kac branch/resample sampling for better alignment-diversity tradeoffs in diffusion RL fine-tuning."/>
+  <meta name="twitter:image" content="https://saugat2002.github.io/iADD/static/images/method.png"/>
+  <meta name="twitter:image:alt" content="iADD method overview: Feynman-Kac branching and incremental timestep updates"/>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css?v=1">
+  <link rel="icon" href="./static/images/favicon.svg">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ScholarlyArticle",
+    "headline": "iADD: Improving Alignment and Diversity in Diffusion Policy Optimization",
+    "name": "iADD: Improving Alignment and Diversity in Diffusion Policy Optimization",
+    "author": [
+      {"@type":"Person","name":"Ashok Prasad Neupane","affiliation":"Pulchowk Campus, IOE, Tribhuvan University"},
+      {"@type":"Person","name":"Saugat Adhikari","affiliation":"Pulchowk Campus, IOE, Tribhuvan University"},
+      {"@type":"Person","name":"Pramish Paudel","affiliation":"INSAIT, Sofia University"},
+      {"@type":"Person","name":"Ajad Chhatkuli","affiliation":"NAAMII; INSAIT, Sofia University"},
+      {"@type":"Person","name":"Danda Pani Paudel","affiliation":"NAAMII; INSAIT, Sofia University"}
+    ],
+    "datePublished": "2026-10-01",
+    "abstract": "Reinforcement learning based post training of diffusion models, such as Denoising Diffusion Policy Optimization (DDPO), optimizes a reverse diffusion process under a reward function. However, current approaches to reward optimization do so at the cost of diversity and quality. iADD provides better tradeoffs through careful theoretical considerations and method design: an incremental sparse timestep update curriculum and a discrete-time Feynman-Kac training procedure that branches promising denoising trajectories and prunes unpromising ones.",
+    "keywords": "diffusion policy optimization, reinforcement learning, Feynman-Kac, DDPO, alignment-diversity tradeoff, rare events, 3D scene generation",
+    "url": "https://saugat2002.github.io/iADD/",
+    "codeRepository": "https://github.com/Saugat2002/iADD",
+    "image": "https://saugat2002.github.io/iADD/static/images/method.png",
+    "about": ["Diffusion models", "Reinforcement learning", "Feynman-Kac sampling", "Policy optimization"]
+  }
+  </script>
+</head>
+<body>
+
+<!-- ===================== NAV ===================== -->
+<nav class="topnav" aria-label="Sections">
+  <a href="#motivation">Motivation</a>
+  <a href="#abstract">Abstract</a>
+  <a href="#method">Method</a>
+  <a href="#video">Video</a>
+  <a href="#results">Results</a>
+  <a href="#bibtex">BibTeX</a>
+</nav>
+
+<!-- ===================== TITLE / AUTHORS / LINKS ===================== -->
+<header class="hero">
+  <h1 class="title">iADD: Improving Alignment and Diversity <br>in Diffusion Policy Optimization</h1>
+
+  <p class="authors">
+    <a href="https://scholar.google.com/citations?user=q5bgiW0AAAAJ&amp;hl=en" target="_blank" rel="noopener">Ashok Prasad Neupane</a><sup>1*</sup>
+    <a href="https://scholar.google.com/citations?hl=en&amp;user=vFnff60AAAAJ" target="_blank" rel="noopener">Saugat Adhikari</a><sup>1*</sup>
+    <a href="https://scholar.google.com/citations?user=SV_cZsoAAAAJ&amp;hl=en" target="_blank" rel="noopener">Pramish Paudel</a><sup>3*</sup>
+    <a href="https://scholar.google.com/citations?user=3BHMHU4AAAAJ&amp;hl=en" target="_blank" rel="noopener">Ajad Chhatkuli</a><sup>2,3</sup>
+    <a href="https://scholar.google.com/citations?user=W43pvPkAAAAJ&amp;hl=en" target="_blank" rel="noopener">Danda Pani Paudel</a><sup>2,3</sup>
+  </p>
+  <p class="affiliations">
+    <sup>1</sup>Pulchowk Campus, IOE, Tribhuvan University, Lalitpur, Nepal &nbsp;
+    <sup>2</sup>NAAMII, Kathmandu, Nepal &nbsp;
+    <sup>3</sup>INSAIT, Sofia University &ldquo;St. Kliment Ohridski&rdquo;, Bulgaria<br>
+    <span class="small">*Equal contribution</span>
+  </p>
+
+  <div class="links">
+    <!-- TODO: swap to arXiv link when ID is live -->
+    <a class="pill dark" href="./static/pdfs/iADD_paper.pdf" target="_blank" rel="noopener">
+      <i class="fas fa-file-pdf" aria-hidden="true"></i> Paper</a>
+    <a class="pill dark" href="https://github.com/Saugat2002/iADD" target="_blank" rel="noopener">
+      <i class="fab fa-github" aria-hidden="true"></i> Code</a>
+    <a class="pill dark" href="#video">
+      <i class="fas fa-circle-play" aria-hidden="true"></i> Video</a>
+    <a class="pill dark" href="#bibtex">
+      <i class="fas fa-quote-right" aria-hidden="true"></i> BibTeX</a>
+  </div>
+</header>
+
+<main>
+
+<!-- ===================== MOTIVATION ===================== -->
+<section id="motivation" class="section wide">
+  <p class="eyebrow">Motivation</p>
+  <h2 class="headline">Higher reward <em>without</em> giving up diversity.</h2>
+  <p class="lead">
+    RL fine-tuning of diffusion models (DDPO and its variants) tends to trade diversity and
+    visual quality for reward. iADD reaches a better point on this tradeoff curve, and holds
+    up on rare, hard-to-align prompts where the pretrained model's probability mass is thin.
+  </p>
+
+  <div class="two-up">
+    <figure class="figure">
+      <img src="./static/images/plot_reward_vs_is_raw.png" width="748" height="548" loading="lazy"
+        alt="Alignment-diversity trade-off curves: Inception Score vs CLIP Score for DDPO, B2-DiffuRL and iADD">
+      <figcaption>(a) iADD reaches a higher CLIP Score at any given diversity (Inception Score)
+        level than DDPO and B&sup2;-DiffuRL, which become increasingly cartoonish and over-saturated
+        as reward increases.</figcaption>
+    </figure>
+    <figure class="figure">
+      <img src="./static/images/common_vs_rare.png" width="1440" height="810" loading="lazy"
+        alt="Bar chart comparing alignment performance on common and rare prompts across methods at constant Inception Score">
+      <figcaption>(b) Alignment on common vs. rare prompts at constant diversity. Rare prompts
+        are conditions that inherently yield low-reward outcomes under the pretrained model.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ===================== ABSTRACT ===================== -->
+<section id="abstract" class="section">
+  <h2>Abstract</h2>
+  <p>
+    Reinforcement learning based post-training of diffusion models, such as Denoising Diffusion
+    Policy Optimization (DDPO), optimizes a reverse diffusion process under a reward function.
+    However, current approaches to reward optimization do so at the cost of diversity and
+    quality. In this paper, we provide better tradeoffs through careful theoretical
+    considerations and method design. We analyze the theoretical framework and mathematically
+    demonstrate that <i>only-latter-timestep</i> updates of a diffusion model may be harmful for
+    diversity, contrary to the conclusions presented in previous work. Additionally, we propose
+    an incremental Feynman&ndash;Kac training procedure, grounded in strong theoretical
+    foundations, to achieve the best-yet alignment&ndash;diversity tradeoffs. We perform
+    extensive experiments and compare our method against related diffusion policy optimization
+    approaches on three different tasks, and provide strong ablations for each component,
+    validating performance gains in both alignment and diversity.
+  </p>
+</section>
+
+<!-- ===================== METHOD ===================== -->
+<section id="method" class="section">
+  <h2>Method</h2>
+  <figure class="figure">
+    <img src="./static/images/method.png" width="1200" height="530" loading="lazy"
+      alt="iADD method overview: Feynman-Kac particle sampling branches high-potential trajectories and prunes low-potential ones from Gaussian noise to the final sample, alongside a progressive incremental timestep update schedule used during RL training">
+    <figcaption><b>Overview of FK sampling and incremental timestep training.</b>
+      <b>(A)</b> FK sampling: starting from Gaussian noise at <i>t</i>&nbsp;=&nbsp;<i>T</i>, partial
+      trajectories are evaluated at discrete checkpoints based on their potentials. FK branching
+      duplicates high-potential particles and prunes low-potential ones, redirecting stochastic
+      denoising paths toward higher expected reward.
+      <b>(B)</b> Incremental timestep updates: training uses a progressive, stage-wise curriculum
+      in which the number of updated denoising timesteps grows over the course of fine-tuning.</figcaption>
+  </figure>
+
+  <div class="phases">
+    <div class="phase">
+      <p class="phase-tag">Theory</p>
+      <h3>Why sparse, early timesteps</h3>
+      <p>For a fixed budget of optimized timesteps, we show uniform (early-inclusive) timestep
+        sampling causes a strictly larger output perturbation than a late-only strategy
+        (Generative Reach), and that sparse updates better preserve the prior's probability
+        volume than updating all timesteps (Volume Preservation). Together these motivate an
+        incremental curriculum: start with a sparse set of early, high-leverage timesteps and
+        grow the active set as training stabilizes.</p>
+    </div>
+    <div class="phase">
+      <p class="phase-tag">Component 1</p>
+      <h3>Incremental timestep update</h3>
+      <p>Each training stage samples and updates a randomly selected subset of denoising
+        timesteps, with the subset size increasing across stages &mdash; from a handful of
+        high-leverage steps to nearly the full trajectory.</p>
+    </div>
+    <div class="phase">
+      <p class="phase-tag">Component 2</p>
+      <h3>Feynman&ndash;Kac path guidance</h3>
+      <p>A discrete-time Feynman&ndash;Kac particle filter branches and resamples partial
+        denoising trajectories during training (not just at inference), using reward-derived
+        potentials to prune unpromising paths and branch promising ones &mdash; improving sample
+        efficiency and rare-event discovery.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== VIDEO ===================== -->
+<section id="video" class="section wide">
+  <h2>Video</h2>
+  <figure class="figure">
+    <video controls playsinline preload="metadata" width="1280" height="720"
+      poster="./static/images/method.png">
+      <source src="./static/videos/iadd_demo.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+      <a href="./static/videos/iadd_demo.mp4">Download the video</a> instead.
+    </video>
+    <figcaption>A walkthrough of iADD: the alignment-diversity tradeoff problem, the incremental
+      timestep curriculum, and Feynman&ndash;Kac branch/resample sampling.</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== RESULTS ===================== -->
+<section id="results" class="section">
+  <h2>Results</h2>
+
+  <div class="setup">
+    <p><b>Setup.</b> We validate iADD on three tasks: text-to-image generation
+      (Stable Diffusion v1.4 + LoRA, reward = CLIPScore), vanishing-point correction in generated
+      images (reward = geometric consensus of converging line segments), and 3D indoor scene
+      generation (continuous-domain MiDiffusion on 3D-FRONT, reward = spatial / collision
+      constraints). Baselines: the frozen pretrained model, DDPO, and B&sup2;-DiffuRL (updates only
+      late timesteps). We also compare against recent inference-time guidance (AIG) and GRPO-style
+      methods (DanceGRPO, BranchGRPO), and test an iADD+GRPO hybrid.</p>
+  </div>
+
+  <h3>Alignment, diversity and rarity across tasks</h3>
+  <div class="table-wrap">
+    <table class="results">
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th colspan="4">Image generation</th>
+          <th colspan="2">3D indoor scene</th>
+          <th colspan="3">Vanishing point</th>
+        </tr>
+        <tr>
+          <th></th>
+          <th>Reward&nbsp;&uarr;</th><th>IS&nbsp;&uarr;</th><th>Rarity&nbsp;&uarr;</th><th>AUC&nbsp;&uarr;</th>
+          <th>Collision&nbsp;&darr;</th><th>CKL&nbsp;&darr;</th>
+          <th>Reward&nbsp;&uarr;</th><th>IS&nbsp;&uarr;</th><th>Rarity&nbsp;&uarr;</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="gt"><td>Pretrained (SD)</td><td>0.3272</td><td>1.3514</td><td>&ndash;</td><td>&ndash;</td><td>53.87%</td><td>30.48%</td><td>0.6105</td><td>1.2735</td><td>&ndash;</td></tr>
+        <tr><td>DDPO</td><td>0.3417</td><td>1.2786</td><td>24.81%</td><td>53.8%</td><td>63.39%</td><td>7.73%</td><td>0.6815</td><td>1.2600</td><td>21.33%</td></tr>
+        <tr><td>B&sup2;-DiffuRL</td><td>0.3452</td><td>1.2728</td><td>24.22%</td><td>58.7%</td><td>64.06%</td><td>6.28%</td><td>0.6486</td><td>1.2550</td><td>31.11%</td></tr>
+        <tr class="ours"><td>iADD (ours)</td><td><b>0.3553</b></td><td><b>1.3241</b></td><td><b>66.85%</b></td><td><b>77.7%</b></td><td><b>59.20%</b></td><td><b>6.13%</b></td><td><b>0.7763</b></td><td><b>1.2881</b></td><td><b>95.11%</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Each method evaluated at its best reward&ndash;diversity operating point. iADD gets
+    the strongest reward&ndash;diversity AUC and rarity across all three tasks while matching or
+    beating DDPO / B&sup2;-DiffuRL on raw reward.</p>
+
+  <details class="breakdown">
+    <summary>Comparison with GRPO and inference-time guidance (Template&nbsp;1: animal activities)</summary>
+    <div class="table-wrap">
+      <table class="results">
+        <thead>
+          <tr><th>Method</th><th>CLIP&nbsp;&uarr;</th><th>IS&nbsp;&uarr;</th><th>Rarity&nbsp;&uarr;</th><th>AUC&nbsp;&uarr;</th><th>LPIPS&nbsp;&uarr;</th></tr>
+        </thead>
+        <tbody>
+          <tr class="gt"><td>AIG (inference-time)</td><td>0.3526</td><td>1.3147</td><td>17.50%</td><td>&ndash;</td><td>0.7531</td></tr>
+          <tr class="ours"><td>iADD</td><td>0.3830</td><td><b>1.3035</b></td><td>78.33%</td><td><b>83.7%</b></td><td>0.7693</td></tr>
+          <tr><td>DanceGRPO</td><td>0.3886</td><td>1.2750</td><td>61.67%</td><td>39.3%</td><td>0.7624</td></tr>
+          <tr><td>BranchGRPO</td><td>0.3854</td><td>1.2917</td><td>56.67%</td><td>43.73%</td><td>0.7447</td></tr>
+          <tr class="ours"><td>iADD+GRPO</td><td><b>0.4126</b></td><td>1.2942</td><td><b>88.33%</b></td><td>73.3%</td><td><b>0.7778</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+  <p class="note">iADD's trajectory guidance and sparse curriculum are complementary to the
+    underlying policy optimizer: combining them with GRPO raises CLIPScore and rarity further
+    while improving LPIPS diversity.</p>
+
+  <h3>Qualitative results</h3>
+  <figure class="figure">
+    <img src="./static/images/image_qualitative.png" width="1346" height="544" loading="lazy"
+      alt="Qualitative comparison on common and rare image prompts across Stable Diffusion, DDPO, B2-DiffuRL and iADD">
+    <figcaption>Common and rare prompts. On rare prompts, DDPO and B&sup2;-DiffuRL either miss the
+      prompt or look cartoonish; iADD keeps both semantic alignment and visual quality.</figcaption>
+  </figure>
+
+  <div class="two-up">
+    <figure class="figure">
+      <img src="./static/images/3d_qualitative.png" width="696" height="410" loading="lazy"
+        alt="3D scene synthesis qualitative comparison: collision reward and spatial reward (TV stand facing bed) across DDPO, B2-DiffuRL and iADD">
+      <figcaption>3D scene synthesis. DDPO and B&sup2;-DiffuRL satisfy the target constraint but
+        introduce collisions; iADD avoids them.</figcaption>
+    </figure>
+    <figure class="figure">
+      <img src="./static/images/vp_qualitative.png" width="716" height="472" loading="lazy"
+        alt="Vanishing point correction qualitative comparison with red off-vanishing intersections and green vanishing points across methods">
+      <figcaption>Vanishing-point correction. Red: off-vanishing intersections. Green: the
+        vanishing point. iADD converges perspective lines while preserving texture.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ===================== BIBTEX ===================== -->
+<section id="bibtex" class="section">
+  <div class="bib-head">
+    <h2>BibTeX</h2>
+    <button type="button" class="copy-btn" id="copy-bib"><i class="far fa-copy" aria-hidden="true"></i> <span>Copy</span></button>
+  </div>
+<!-- TODO: swap to @article with the arXiv id once it is live -->
+<pre><code id="bib-text">@misc{neupane2026iadd,
+  title   = {iADD: Improving Alignment and Diversity in Diffusion Policy Optimization},
+  author  = {Neupane, Ashok Prasad and Adhikari, Saugat and Paudel, Pramish
+             and Chhatkuli, Ajad and Paudel, Danda Pani},
+  year    = {2026},
+  note    = {Preprint},
+  url     = {https://github.com/Saugat2002/iADD}
+}</code></pre>
+</section>
+
+</main>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="footer">
+  <p>
+    <a href="https://github.com/Saugat2002/iADD" target="_blank" rel="noopener" aria-label="GitHub"><i class="fab fa-github"></i></a>
+  </p>
+  <p>
+    This website is licensed under a
+    <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0 License</a>.
+    Adapted from the <a href="https://github.com/nerfies/nerfies.github.io" target="_blank" rel="noopener">Nerfies</a> template.
+  </p>
+</footer>
+
+<script src="./static/js/index.js?v=1"></script>
+</body>
+</html>
