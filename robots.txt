@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://saugat2002.github.io/iADD/sitemap.xml
+Sitemap: https://saugat2002.github.io/iadd/sitemap.xml
