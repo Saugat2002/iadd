@@ -179,7 +179,7 @@ function initFK() {
     guide(BRANCH, desktop ? 'branch · t_b' : 't_b', 'Branch at t_b (the 5th denoising step): the shared state is replicated into k particles that then diverge.');
     RES.forEach(function (rs, i2) {
       guide(rs, desktop ? 'resample ' + RESLBL[i2] : RESLBL[i2],
-        'Resample at step ' + rs + ' (' + RESLBL[i2] + '): particles are scored with the max potential; low-weight ones are replaced by copies of high-weight ones.');
+        'Resample at step ' + rs + ' (' + RESLBL[i2] + '): particles are scored, G = exp(\u03bb\u00b7max(r(x\u0302\u2080), w_prev)); low-weight ones are replaced by copies of high-weight ones.');
     });
     // axis + progress
     el('line', { x1: L, y1: axisY, x2: xs(T), y2: axisY, stroke: '#dadce0', 'stroke-width': 2, 'stroke-linecap': 'round' }, svg);
@@ -319,7 +319,7 @@ function initCurriculum() {
   var stage = document.getElementById('cur-stage');
   var anyBtn = document.getElementById('cur-any'), lateBtn = document.getElementById('cur-late'), shuffleBtn = document.getElementById('cur-shuffle');
   var readout = document.getElementById('cur-readout');
-  var stageCap = document.getElementById('cur-stage-cap'), modeCap = document.getElementById('cur-mode-cap');
+  var modeCap = document.getElementById('cur-mode-cap');
   var ticks = document.querySelectorAll('#cur-widget .tick');
   var mode = 'any', seed = 3, cells = [];
   var perm = [];
@@ -381,8 +381,7 @@ function initCurriculum() {
       c.setAttribute('class', 'cell' + (set[i] ? ' on' : ''));
       var t = c.firstChild; if (t) t.textContent = 't = ' + (T - i) + (set[i] ? ' · updated' : ' · frozen');
     });
-    readout.innerHTML = '<b>' + n + '</b> of ' + T + ' timesteps updated · stage ' + (si + 1) + ' of 4';
-    showOnly(stageCap, si);
+    readout.innerHTML = '<b>' + n + '</b> of ' + T + ' timesteps · stage ' + (si + 1) + '/4';
     showOnly(modeCap, mode === 'any' ? 0 : 1);
     for (var j = 0; j < ticks.length; j++) ticks[j].className = 'tick' + (j === si ? ' cur' : '');
   }

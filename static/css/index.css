@@ -475,3 +475,5 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
 .more-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
 .more h4 { margin: 0 0 0.3rem; font-size: 0.95rem; }
 @media (max-width: 860px) { .more-grid { grid-template-columns: 1fr; } }
+
+.widget-intro { text-align: center; }
