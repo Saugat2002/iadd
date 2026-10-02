@@ -21,8 +21,9 @@
   <meta name="citation_author" content="Paudel, Danda Pani"/>
   <meta name="citation_publication_date" content="2026/10/01"/>
   <meta name="citation_online_date" content="2026/10/01"/>
-  <!-- TODO: swap to arXiv link when ID is live -->
-  <meta name="citation_pdf_url" content="https://saugat2002.github.io/iadd/static/pdfs/iADD_paper.pdf"/>
+  <meta name="citation_arxiv_id" content="2610.01789"/>
+  <meta name="citation_pdf_url" content="https://arxiv.org/pdf/2610.01789"/>
+  <meta name="citation_abstract_html_url" content="https://arxiv.org/abs/2610.01789"/>
   <meta name="citation_technical_report_institution" content="Pulchowk Campus, IOE Tribhuvan University / NAAMII / INSAIT"/>
   <meta name="citation_keywords" content="diffusion policy optimization; reinforcement learning; Feynman-Kac; DDPO; alignment-diversity tradeoff"/>
 
@@ -64,6 +65,8 @@
       {"@type":"Person","name":"Danda Pani Paudel","affiliation":"NAAMII; INSAIT, Sofia University"}
     ],
     "datePublished": "2026-10-01",
+    "identifier": "arXiv:2610.01789",
+    "sameAs": "https://arxiv.org/abs/2610.01789",
     "abstract": "Reinforcement learning based post training of diffusion models, such as Denoising Diffusion Policy Optimization (DDPO), optimizes a reverse diffusion process under a reward function. However, current approaches to reward optimization do so at the cost of diversity and quality. iADD provides better tradeoffs through careful theoretical considerations and method design: an incremental sparse timestep update curriculum and a discrete-time Feynman-Kac training procedure that branches promising denoising trajectories and prunes unpromising ones.",
     "keywords": "diffusion policy optimization, reinforcement learning, Feynman-Kac, DDPO, alignment-diversity tradeoff, rare events, 3D scene generation",
     "url": "https://saugat2002.github.io/iadd/",
@@ -117,9 +120,10 @@
   </p>
 
   <div class="links">
-    <!-- TODO: swap to arXiv link when ID is live -->
     <a class="pill dark" href="./static/pdfs/iADD_paper.pdf" target="_blank" rel="noopener">
       <i class="fas fa-file-pdf" aria-hidden="true"></i> Paper</a>
+    <a class="pill dark" href="https://arxiv.org/abs/2610.01789" target="_blank" rel="noopener">
+      <i class="ai ai-arxiv" aria-hidden="true"></i> arXiv</a>
     <a class="pill dark" href="https://github.com/Saugat2002/iADD" target="_blank" rel="noopener">
       <i class="fab fa-github" aria-hidden="true"></i> Code</a>
     <a class="pill dark" href="#video">
@@ -330,14 +334,14 @@
     <h2>BibTeX</h2>
     <button type="button" class="copy-btn" id="copy-bib"><i class="far fa-copy" aria-hidden="true"></i> <span>Copy</span></button>
   </div>
-<!-- TODO: swap to @article with the arXiv id once it is live -->
 <pre><code id="bib-text">@misc{neupane2026iadd,
   title   = {iADD: Improving Alignment and Diversity in Diffusion Policy Optimization},
   author  = {Neupane, Ashok Prasad and Adhikari, Saugat and Paudel, Pramish
              and Chhatkuli, Ajad and Paudel, Danda Pani},
   year    = {2026},
-  note    = {Preprint},
-  url     = {https://github.com/Saugat2002/iADD}
+  eprint  = {2610.01789},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG}
 }</code></pre>
 </section>
 

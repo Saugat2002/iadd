@@ -7,7 +7,8 @@ Authors: Ashok Prasad Neupane*, Saugat Adhikari* (Pulchowk Campus, IOE, Tribhuva
 ## Links
 
 - [Project page](https://saugat2002.github.io/iadd/): overview, figures and result tables
-- [Paper PDF](https://saugat2002.github.io/iadd/static/pdfs/iADD_paper.pdf): preprint (no arXiv ID yet)
+- [arXiv](https://arxiv.org/abs/2610.01789): arXiv:2610.01789 (cs.LG)
+- [Paper PDF](https://saugat2002.github.io/iadd/static/pdfs/iADD_paper.pdf): hosted copy of the arXiv v1 PDF
 - [Code](https://github.com/Saugat2002/iADD)
 - [Demo video](https://saugat2002.github.io/iadd/static/videos/iadd_demo.mp4): walkthrough of the tradeoff problem, the curriculum and FK sampling
 
@@ -37,7 +38,8 @@ Each method is evaluated at its best reward-diversity operating point. Baselines
   author  = {Neupane, Ashok Prasad and Adhikari, Saugat and Paudel, Pramish
              and Chhatkuli, Ajad and Paudel, Danda Pani},
   year    = {2026},
-  note    = {Preprint},
-  url     = {https://github.com/Saugat2002/iADD}
+  eprint  = {2610.01789},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG}
 }
 ```
