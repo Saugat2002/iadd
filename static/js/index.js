@@ -52,45 +52,54 @@ function initBib() {
 function initFK() {
   var svg = document.getElementById('fk-svg');
   if (!svg) return;
-  var T = 20, BRANCH = 5, RES = [8, 12, 16], LAMBDA = 2.0;
-  var X0 = 36, X1 = 700, YT = 0.5;
-  var W = 720, TOP = 40, BOT = 280;
-  var xs = function (s) { return X0 + (X1 - X0) * s / T; };
-  var ys = function (v) { return TOP + (BOT - TOP) * v; };
-  var reward = function (v) { var d = (v - YT) / 0.28; return Math.exp(-d * d); };
+  var T = 20, BRANCH = 5, RES = [8, 12, 16], RESLBL = ['0.4T', '0.6T', '0.8T'], LAMBDA = 2.0;
+  var LIVE = [26, 115, 232], DEADC = [201, 204, 209];
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var kSlider = document.getElementById('fk-k'), kVal = document.getElementById('fk-k-val');
+  var playBtn = document.getElementById('fk-play'), stepBtn = document.getElementById('fk-step'), resetBtn = document.getElementById('fk-reset');
+  var narr = document.getElementById('fk-narr');
+  var narrIdx = -1;
+  var W, H, L, R, PT, PB, desktop, SY;
+  var sim, p = BRANCH, tw = null, raf = null;
 
-  var kSlider = document.getElementById('fk-k');
-  var kVal = document.getElementById('fk-k-val');
-  var playBtn = document.getElementById('fk-play');
-  var stepBtn = document.getElementById('fk-step');
-  var resetBtn = document.getElementById('fk-reset');
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function mix(a, b, f) { return 'rgb(' + [0, 1, 2].map(function (i) { return Math.round(a[i] + (b[i] - a[i]) * f); }).join(',') + ')'; }
+  function ease(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+  function reward(v) { var d = (v - 0.5) / 0.3; return Math.exp(-d * d); }
 
-  var sim, p = 0, target = 0, playing = false, last = 0, raf = null;
+  function layout() {
+    W = Math.max(280, Math.round(svg.getBoundingClientRect().width));
+    desktop = W >= 560;
+    H = desktop ? Math.round(W * 7 / 16) : Math.round(W * 0.78);
+    L = 18; R = desktop ? 70 : 46; PT = 44; PB = H - 40; SY = PB - PT;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  }
+  function xs(s) { return L + (W - L - R) * s / T; }
+  var vlo = 0, vhi = 1;
+  function ys(v) { return PT + SY * (v - vlo) / (vhi - vlo); }
 
   function simulate(k) {
-    var r = rng(7 + k * 13);
-    var pos = [], par = [], wt = [], src = {}, final = {};
-    var prefix = [0.5];
-    for (var s = 1; s <= BRANCH; s++) prefix.push(Math.min(0.95, Math.max(0.05, prefix[s - 1] + (r() - 0.5) * 0.12)));
-    pos[BRANCH] = []; par[BRANCH] = []; wt[BRANCH] = [];
-    for (var i = 0; i < k; i++) { pos[BRANCH][i] = prefix[BRANCH]; par[BRANCH][i] = i; wt[BRANCH][i] = 0; }
+    var r = rng(11 + k * 17);
+    var prefix = [0.5], mp = [0], pv = 0, s, i;
+    for (s = 1; s <= BRANCH; s++) { pv = 0.7 * pv + (r() - 0.5) * 0.05; prefix[s] = clamp(prefix[s - 1] + pv, 0.3, 0.7); mp[s] = prefix[s] - prefix[s - 1]; }
+    var pos = [], vel = [], par = [], wt = [], sc = {}, src = {};
+    pos[BRANCH] = []; vel[BRANCH] = []; par[BRANCH] = []; wt[BRANCH] = [];
+    for (i = 0; i < k; i++) { pos[BRANCH][i] = prefix[BRANCH]; vel[BRANCH][i] = mp[BRANCH]; par[BRANCH][i] = 0; wt[BRANCH][i] = 0; }
     for (s = BRANCH + 1; s <= T; s++) {
-      pos[s] = []; par[s] = []; wt[s] = [];
-      var prevSrc = src[s - 1];
+      pos[s] = []; vel[s] = []; par[s] = []; wt[s] = [];
       for (i = 0; i < k; i++) {
-        var from = prevSrc ? prevSrc[i] : i;
+        var from = src[s - 1] ? src[s - 1][i] : i;
         par[s][i] = from;
-        var spread = 0.07 + 0.015 * (s - BRANCH);
-        var v = pos[s - 1][from] + (r() - 0.5) * spread * 2;
-        pos[s][i] = Math.min(0.97, Math.max(0.03, v));
-        wt[s][i] = wt[s - 1][from];
+        var kick = s === BRANCH + 1 ? 0.09 : 0.065;
+        var v = 0.8 * vel[s - 1][from] + (r() - 0.5) * 2 * kick;
+        var x = pos[s - 1][from] + v;
+        if (x < 0.08 || x > 0.92) { v = -v * 0.5; x = clamp(x, 0.08, 0.92); }
+        pos[s][i] = x; vel[s][i] = v; wt[s][i] = wt[s - 1][from];
       }
       if (RES.indexOf(s) >= 0) {
         var raw = [], tot = 0;
-        for (i = 0; i < k; i++) {
-          wt[s][i] = Math.max(reward(pos[s][i]), wt[s][i]);
-          raw[i] = Math.exp(LAMBDA * wt[s][i]); tot += raw[i];
-        }
+        for (i = 0; i < k; i++) { wt[s][i] = Math.max(reward(pos[s][i]), wt[s][i]); raw[i] = Math.exp(LAMBDA * wt[s][i]); tot += raw[i]; }
+        sc[s] = wt[s].slice();
         var sel = [];
         for (var j = 0; j < k; j++) {
           var u = r() * tot, acc = 0, pick = k - 1;
@@ -98,177 +107,207 @@ function initFK() {
           sel[j] = pick;
         }
         src[s] = sel;
-        // carry the chosen particles' weights forward
-        wt[s] = sel.map(function (q) { return wt[s][q]; });
-        // keep positions of sources for drawing the replacement links
-        sim_tmp_pos[s] = pos[s].slice();
       }
     }
-    return { k: k, pos: pos, par: par, wt: wt, src: src, prefix: prefix };
-  }
-  var sim_tmp_pos = {};
-
-  function build(k) {
-    sim_tmp_pos = {};
-    sim = simulate(k);
-    // final best/worst by reward at step T
-    var rs = sim.pos[T].map(reward);
-    sim.best = rs.indexOf(Math.max.apply(null, rs));
-    sim.worst = rs.indexOf(Math.min.apply(null, rs));
-    p = 0; target = 0; playing = false; playBtn.textContent = 'Play';
-    playBtn.setAttribute('aria-pressed', 'false');
-    draw();
-  }
-
-  // Which (step, slot) nodes lie on a path leading to the current frontier?
-  function aliveSet(front) {
-    var alive = {};
-    var cur = {};
-    for (var i = 0; i < sim.k; i++) cur[i] = true;
-    for (var s = front; s > BRANCH; s--) {
-      var nxt = {};
-      for (i in cur) {
-        alive[s + ':' + i] = true;
-        // slot i at step s came from slot par[s][i] at step s-1
-        nxt[sim.par[s][i]] = true;
+    var leaf = [];
+    leaf[T] = []; for (i = 0; i < k; i++) leaf[T][i] = T;
+    for (s = T - 1; s >= BRANCH; s--) {
+      leaf[s] = [];
+      for (i = 0; i < k; i++) {
+        var m = s;
+        for (j = 0; j < k; j++) if (par[s + 1][j] === i) m = Math.max(m, leaf[s + 1][j]);
+        leaf[s][i] = m;
       }
-      cur = nxt;
     }
-    return alive;
+    var rs = pos[T].map(reward);
+    vlo = 1; vhi = 0;
+    prefix.forEach(function (x) { vlo = Math.min(vlo, x); vhi = Math.max(vhi, x); });
+    for (s = BRANCH; s <= T; s++) pos[s].forEach(function (x) { vlo = Math.min(vlo, x); vhi = Math.max(vhi, x); });
+    vlo -= 0.04; vhi += 0.04;
+    return { k: k, prefix: prefix, mp: mp, pos: pos, par: par, sc: sc, src: src, leaf: leaf,
+      best: rs.indexOf(Math.max.apply(null, rs)), worst: rs.indexOf(Math.min.apply(null, rs)) };
+  }
+
+  function val(s, i) { return s <= BRANCH ? sim.prefix[s] : sim.pos[s][i]; }
+  function pa(s, i) { return s > BRANCH ? sim.par[s][i] : 0; }
+  function slope(s, i) { return s <= 0 ? 0 : val(s, i) - val(s - 1, pa(s, i)); }
+  function seg(s, i) {
+    var q = pa(s, i), dx = xs(1) - xs(0);
+    var a = [xs(s - 1), ys(val(s - 1, q))], b = [xs(s), ys(val(s, i))];
+    return [a, [a[0] + dx / 3, a[1] + slope(s - 1, q) * SY / 3], [b[0] - dx / 3, b[1] - slope(s, i) * SY / 3], b];
+  }
+  function lerp(a, b, f) { return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; }
+  function split(P, f) {
+    var a = lerp(P[0], P[1], f), b = lerp(P[1], P[2], f), c = lerp(P[2], P[3], f);
+    var d = lerp(a, b, f), e = lerp(b, c, f), g = lerp(d, e, f);
+    return [P[0], a, d, g];
+  }
+  function d(P) { return 'M' + P[0][0] + ' ' + P[0][1] + ' C' + P[1][0] + ' ' + P[1][1] + ' ' + P[2][0] + ' ' + P[2][1] + ' ' + P[3][0] + ' ' + P[3][1]; }
+
+  function narrate() {
+    var idx;
+    if (p < BRANCH) idx = 0;
+    else if (p >= T - 0.001) idx = 4;
+    else {
+      idx = 1;
+      for (var i = 0; i < RES.length; i++) {
+        if (p >= RES[i] && p < RES[i] + 0.5) idx = 2;
+        else if (p >= RES[i] + 0.5 && p < RES[i] + 3) idx = 3;
+      }
+    }
+    if (idx !== narrIdx) {
+      narrIdx = idx;
+      var spans = narr.children;
+      for (var j = 0; j < spans.length; j++) spans[j].className = j === idx ? 'on' : '';
+    }
   }
 
   function draw() {
-    while (svg.childNodes.length > 2) svg.removeChild(svg.lastChild); // keep title, desc
-    var k = sim.k;
-    var front = Math.min(T, Math.floor(p + 1e-6));
-    var frac = p - Math.floor(p + 1e-6);
-    // axis
-    el('line', { x1: X0, y1: 296, x2: X1, y2: 296, stroke: '#c9ccd1' }, svg);
-    var t1 = el('text', { x: X0, y: 312, 'class': 'fk-axis' }, svg); t1.textContent = 't = T (noise)';
-    var t2 = el('text', { x: X1, y: 312, 'class': 'fk-axis', 'text-anchor': 'end' }, svg); t2.textContent = 't = 0 (sample)';
-    // branch marker + resample markers
-    function marker(s, label, col) {
-      el('line', { x1: xs(s), y1: 26, x2: xs(s), y2: 296, stroke: col, 'stroke-dasharray': '3 4', 'stroke-width': 1 }, svg);
-      var tx = el('text', { x: xs(s), y: 18, 'class': 'fk-axis', 'text-anchor': 'middle' }, svg);
-      tx.textContent = label;
+    while (svg.childNodes.length > 2) svg.removeChild(svg.lastChild);
+    var k = sim.k, axisY = H - 26, i, s;
+    // phase band for the shared prefix
+    el('rect', { x: L, y: 28, width: xs(BRANCH) - L, height: axisY - 28, rx: 6, fill: '#5f6368', 'fill-opacity': 0.035 }, svg);
+    var bl = el('text', { x: L + 8, y: axisY - 8, 'class': 'fk-axis' }, svg); bl.textContent = 'shared prefix';
+    // guides with hover tooltips
+    function guide(sx, label, tip) {
+      var g = el('g', {}, svg);
+      el('line', { x1: xs(sx), y1: 28, x2: xs(sx), y2: axisY, stroke: '#cfd2d6', 'stroke-dasharray': '2 4', 'stroke-width': 1.2 }, g);
+      el('rect', { x: xs(sx) - 9, y: 6, width: 18, height: axisY - 6, fill: 'transparent' }, g).appendChild(document.createElementNS(NS, 'title')).textContent = tip;
+      var t = el('text', { x: xs(sx), y: 20, 'text-anchor': 'middle', 'class': 'fk-axis strong' }, g); t.textContent = label;
+      t.style.pointerEvents = 'none';
     }
-    marker(BRANCH, 'branch (t_b = 5)', '#188038');
-    RES.forEach(function (s, i) { marker(s, 'resample ' + ['0.4', '0.6', '0.8'][i] + 'T', '#1a73e8'); });
-
-    var alive = aliveSet(front);
-    var LIVE = '#1a73e8', DEAD = '#c4c7cc';
-    var atEnd = front >= T;
-
-    // shared prefix
-    var pts = [];
-    for (var s = 0; s <= Math.min(front, BRANCH); s++) pts.push(xs(s) + ',' + ys(sim.prefix[s]));
-    if (front < BRANCH) {
-      var a = sim.prefix[front], b = sim.prefix[front + 1];
-      pts.push(xs(front + frac) + ',' + ys(a + (b - a) * frac));
-    }
-    el('polyline', { points: pts.join(' '), fill: 'none', stroke: LIVE, 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
-
-    // segments: dead first, then live, then best/worst
-    function seg(s, i, partial, style) {
-      var from = sim.par[s][i];
-      var x0 = xs(s - 1), y0 = ys(sim.pos[s - 1][from]);
-      var x1 = xs(s), y1 = ys(sim.pos[s][i]);
-      if (partial !== undefined) { x1 = x0 + (x1 - x0) * partial; y1 = y0 + (y1 - y0) * partial; }
-      el('line', { x1: x0, y1: y0, x2: x1, y2: y1, stroke: style.c, 'stroke-width': style.w, 'stroke-linecap': 'round', 'stroke-dasharray': style.d || 'none' }, svg);
-    }
-    var segs = [];
-    for (s = BRANCH + 1; s <= Math.min(T, front + (frac > 0 ? 1 : 0)); s++) {
-      for (var i = 0; i < k; i++) segs.push({ s: s, i: i, partial: s > front ? frac : undefined });
-    }
-    segs.forEach(function (g) {
-      if (!alive[g.s + ':' + g.i]) seg(g.s, g.i, g.partial, { c: DEAD, w: 1.6, d: '4 3' });
+    guide(BRANCH, desktop ? 'branch · t_b' : 't_b', 'Branch at t_b (the 5th denoising step): the shared state is replicated into k particles that then diverge.');
+    RES.forEach(function (rs, i2) {
+      guide(rs, desktop ? 'resample ' + RESLBL[i2] : RESLBL[i2],
+        'Resample at step ' + rs + ' (' + RESLBL[i2] + '): particles are scored with the max potential; low-weight ones are replaced by copies of high-weight ones.');
     });
-    segs.forEach(function (g) {
-      var isLive = g.s > front || alive[g.s + ':' + g.i];
-      if (isLive) seg(g.s, g.i, g.partial, { c: LIVE, w: 2.2 });
+    // axis + progress
+    el('line', { x1: L, y1: axisY, x2: xs(T), y2: axisY, stroke: '#dadce0', 'stroke-width': 2, 'stroke-linecap': 'round' }, svg);
+    el('line', { x1: L, y1: axisY, x2: xs(clamp(p, 0, T)), y2: axisY, stroke: '#1a73e8', 'stroke-width': 2, 'stroke-linecap': 'round' }, svg);
+    var a1 = el('text', { x: L, y: H - 6, 'class': 'fk-axis' }, svg); a1.textContent = desktop ? 't = T  (noise)' : 't = T';
+    var a2 = el('text', { x: xs(T), y: H - 6, 'class': 'fk-axis', 'text-anchor': 'end' }, svg); a2.textContent = desktop ? 't = 0  (sample)' : 't = 0';
+
+    // collect segments
+    var items = [];
+    for (s = 1; s <= BRANCH; s++) {
+      if (p <= s - 1) break;
+      items.push({ s: s, i: 0, f: clamp(p - (s - 1), 0, 1), fade: 0, pre: true });
+    }
+    for (s = BRANCH + 1; s <= T; s++) {
+      if (p <= s - 1) break;
+      for (i = 0; i < k; i++) {
+        var lf = sim.leaf[s][i];
+        items.push({ s: s, i: i, f: clamp(p - (s - 1), 0, 1), fade: lf < T ? clamp((p - lf) / 0.8, 0, 1) : 0 });
+      }
+    }
+    items.sort(function (a, b) { return b.fade - a.fade; });
+    items.forEach(function (g) {
+      var P = seg(g.s, g.i); if (g.f < 1) P = split(P, g.f);
+      var col = g.pre ? 'rgb(95,99,104)' : mix(LIVE, DEADC, g.fade);
+      el('path', { d: d(P), fill: 'none', stroke: col, 'stroke-width': g.pre ? 3 : (2.4 - 1.0 * g.fade), 'stroke-linecap': 'round', 'stroke-opacity': 1 - 0.1 * g.fade }, svg);
     });
-    // best / worst lineages once finished
-    if (atEnd) {
+    // best / worst overlay near the end
+    var ramp = clamp(p - (T - 1), 0, 1);
+    if (ramp > 0) {
       [[sim.worst, '#c5221f'], [sim.best, '#188038']].forEach(function (bw) {
         var slot = bw[0];
         for (var st = T; st > BRANCH; st--) {
-          seg(st, slot, undefined, { c: bw[1], w: 3.2 });
+          el('path', { d: d(seg(st, slot)), fill: 'none', stroke: bw[1], 'stroke-width': 3.4, 'stroke-linecap': 'round', 'stroke-opacity': ramp * 0.92 }, svg);
           slot = sim.par[st][slot];
         }
       });
     }
-    // resample links: where a replaced particle was copied from
+    // branch node
+    if (p >= BRANCH) el('circle', { cx: xs(BRANCH), cy: ys(sim.prefix[BRANCH]), r: 6, fill: '#5f6368', stroke: '#fff', 'stroke-width': 2 }, svg);
+    // resample nodes
     RES.forEach(function (rs) {
       if (p < rs) return;
-      var src = sim.src[rs];
+      var o = clamp((p - rs) / 0.4, 0, 1), src = sim.src[rs];
       for (var j = 0; j < k; j++) {
-        var cnt = 0; src.forEach(function (q2) { if (q2 === j) cnt++; });
-        var pre = sim_tmp_pos[rs][j];
-        var rad = 3 + 6 * reward(pre);
-        var ok = cnt > 0;
-        el('circle', { cx: xs(rs), cy: ys(pre), r: rad, fill: ok ? '#fff' : '#f1f3f4', stroke: ok ? '#1a73e8' : '#9aa0a6', 'stroke-width': 1.6 }, svg);
-        if (!ok) {
-          var x = xs(rs), y = ys(pre);
-          el('line', { x1: x - 4, y1: y - 4, x2: x + 4, y2: y + 4, stroke: '#c5221f', 'stroke-width': 1.6 }, svg);
-          el('line', { x1: x - 4, y1: y + 4, x2: x + 4, y2: y - 4, stroke: '#c5221f', 'stroke-width': 1.6 }, svg);
-        } else if (cnt > 1) {
-          var tx = el('text', { x: xs(rs) + 11, y: ys(pre) + 4, 'class': 'fk-lbl', fill: '#1a73e8', 'font-weight': 700 }, svg);
-          tx.textContent = '×' + cnt;
+        var cnt = 0; src.forEach(function (q) { if (q === j) cnt++; });
+        var cx = xs(rs), cy = ys(sim.pos[rs][j]);
+        var g = el('g', { opacity: o }, svg);
+        var tip = 'Particle ' + (j + 1) + ' at step ' + rs + ': weight w = ' + sim.sc[rs][j].toFixed(2) + (cnt === 0 ? ' → pruned' : cnt === 1 ? ' → kept' : ' → copied ×' + cnt);
+        if (cnt === 0) {
+          el('circle', { cx: cx, cy: cy, r: 6, fill: '#f1f3f4', stroke: '#bdc1c6', 'stroke-width': 1.5 }, g);
+          el('path', { d: 'M' + (cx - 2.5) + ' ' + (cy - 2.5) + 'L' + (cx + 2.5) + ' ' + (cy + 2.5) + 'M' + (cx - 2.5) + ' ' + (cy + 2.5) + 'L' + (cx + 2.5) + ' ' + (cy - 2.5), stroke: '#80868b', 'stroke-width': 1.5, 'stroke-linecap': 'round' }, g);
+        } else {
+          el('circle', { cx: cx, cy: cy, r: 5, fill: '#fff', stroke: '#1a73e8', 'stroke-width': 2 }, g);
+          if (cnt > 1) {
+            el('rect', { x: cx + 7, y: cy - 17, width: 22, height: 14, rx: 7, fill: '#e8f0fe', stroke: '#1a73e8', 'stroke-width': 1 }, g);
+            var bt = el('text', { x: cx + 18, y: cy - 7, 'text-anchor': 'middle', 'class': 'fk-badge' }, g); bt.textContent = '×' + cnt;
+          }
         }
+        el('circle', { cx: cx, cy: cy, r: 11, fill: 'transparent' }, g).appendChild(document.createElementNS(NS, 'title')).textContent = tip;
       }
     });
-    // end labels
-    if (atEnd) {
-      var lb = el('text', { x: X1 - 4, y: ys(sim.pos[T][sim.best]) - 8, 'class': 'fk-lbl', 'text-anchor': 'end', fill: '#188038', 'font-weight': 700 }, svg);
-      lb.textContent = 'best (kept)';
-      var lw = el('text', { x: X1 - 4, y: ys(sim.pos[T][sim.worst]) + 16, 'class': 'fk-lbl', 'text-anchor': 'end', fill: '#c5221f', 'font-weight': 700 }, svg);
-      lw.textContent = 'worst (kept)';
+    // heads / final nodes
+    if (p >= T - 0.001) {
+      var labs = [];
+      for (i = 0; i < k; i++) {
+        var isB = i === sim.best, isW = i === sim.worst;
+        el('circle', { cx: xs(T), cy: ys(sim.pos[T][i]), r: isB || isW ? 6.5 : 4.5, fill: isB ? '#188038' : isW ? '#c5221f' : '#fff', stroke: isB || isW ? '#fff' : '#1a73e8', 'stroke-width': isB || isW ? 2 : 2 }, svg)
+          .appendChild(document.createElementNS(NS, 'title')).textContent = 'Final particle ' + (i + 1) + ' reward r = ' + reward(sim.pos[T][i]).toFixed(2) + ' (schematic)';
+      }
+      var yb = ys(sim.pos[T][sim.best]), yw = ys(sim.pos[T][sim.worst]);
+      if (Math.abs(yb - yw) < 16) { if (yb <= yw) { yb -= 8; yw += 8; } else { yb += 8; yw -= 8; } }
+      var lb = el('text', { x: xs(T) + 12, y: yb + 4, 'class': 'fk-lbl', fill: '#188038' }, svg); lb.textContent = 'best';
+      var lw = el('text', { x: xs(T) + 12, y: yw + 4, 'class': 'fk-lbl', fill: '#c5221f' }, svg); lw.textContent = 'worst';
+    } else if (p > BRANCH) {
+      var sH = Math.ceil(p - 1e-9), f = p - (sH - 1);
+      for (i = 0; i < k; i++) {
+        if (sim.leaf[sH][i] < p - 1e-9 && sim.leaf[sH][i] < T) continue;
+        var P = seg(sH, i); var h = split(P, clamp(f, 0.0001, 1))[3];
+        el('circle', { cx: h[0], cy: h[1], r: 4.5, fill: '#fff', stroke: '#1a73e8', 'stroke-width': 2 }, svg);
+      }
+    } else {
+      var sP = Math.max(1, Math.ceil(p - 1e-9)), fP = p - (sP - 1);
+      var hp = split(seg(sP, 0), clamp(fP, 0.0001, 1))[3];
+      el('circle', { cx: hp[0], cy: hp[1], r: 4.5, fill: '#5f6368', stroke: '#fff', 'stroke-width': 2 }, svg);
     }
-    // playhead
-    el('circle', { cx: xs(Math.min(T, p)), cy: 296, r: 4, fill: '#202124' }, svg);
+    narrate();
   }
 
+  function setP(v) { p = v; draw(); }
+  function stop() { if (raf) cancelAnimationFrame(raf); raf = null; tw = null; playBtn.textContent = p >= T ? 'Replay' : 'Play'; playBtn.setAttribute('aria-pressed', 'false'); }
   function tick(now) {
     raf = null;
-    var dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (p < target) {
-      p = Math.min(target, p + dt * 5.5);
-      draw();
-      if (p >= target) { playing = false; playBtn.textContent = p >= T ? 'Replay' : 'Play'; playBtn.setAttribute('aria-pressed', 'false'); }
-    }
-    if (p < target) raf = requestAnimationFrame(tick);
+    if (!tw) return;
+    var t = clamp((now - tw.t0) / tw.dur, 0, 1);
+    setP(tw.from + (tw.to - tw.from) * (tw.ease ? ease(t) : t));
+    if (t < 1) raf = requestAnimationFrame(tick); else { tw = null; stop(); }
   }
-  function run(t) {
-    target = t;
-    playing = true;
-    last = performance.now();
-    playBtn.textContent = 'Pause';
-    playBtn.setAttribute('aria-pressed', 'true');
-    if (!raf) raf = requestAnimationFrame(tick);
+  function run(to, dur, eased) {
+    stop();
+    if (reduce) { setP(to); stop(); return; }
+    tw = { from: p, to: to, t0: performance.now(), dur: Math.max(dur, 1), ease: eased };
+    raf = requestAnimationFrame(tick);
   }
-  function pause() {
-    target = p; playing = false;
-    playBtn.textContent = 'Play'; playBtn.setAttribute('aria-pressed', 'false');
-  }
+  function build(k) { stop(); sim = simulate(k); narrIdx = -1; setP(BRANCH); stop(); }
 
   playBtn.addEventListener('click', function () {
-    if (playing) { pause(); return; }
-    if (p >= T) { p = 0; }
-    run(T);
+    if (tw) { stop(); return; }
+    if (p >= T - 0.001) p = 0;
+    playBtn.textContent = 'Pause'; playBtn.setAttribute('aria-pressed', 'true');
+    run(T, (T - p) * 190, false);
+    if (!tw) stop();
+    else { playBtn.textContent = 'Pause'; playBtn.setAttribute('aria-pressed', 'true'); }
   });
   stepBtn.addEventListener('click', function () {
-    var cur = Math.floor(p + 1e-6);
     var next = null;
-    for (var i = 0; i < RES.length; i++) if (RES[i] >= cur && (RES[i] + 1) > p + 1e-6) { next = RES[i]; break; }
-    if (next === null) { p = 0; next = RES[0]; }
-    // go to just after the resample step so the copy is visible
-    run(next + 1);
+    for (var i = 0; i < RES.length; i++) if (RES[i] + 1 > p + 1e-6) { next = RES[i] + 1; break; }
+    if (next === null) { p = BRANCH; next = RES[0] + 1; }
+    if (next < BRANCH) next = BRANCH;
+    run(next, 550 + (next - p) * 90, true);
   });
   resetBtn.addEventListener('click', function () { build(sim.k); });
-  kSlider.addEventListener('input', function () {
-    kVal.textContent = kSlider.value;
-    build(parseInt(kSlider.value, 10));
+  kSlider.addEventListener('input', function () { kVal.textContent = kSlider.value; build(parseInt(kSlider.value, 10)); });
+  var rz = null;
+  window.addEventListener('resize', function () {
+    if (rz) cancelAnimationFrame(rz);
+    rz = requestAnimationFrame(function () { rz = null; layout(); draw(); });
   });
+  layout();
   build(parseInt(kSlider.value, 10));
 }
 
@@ -278,69 +317,96 @@ function initCurriculum() {
   if (!svg) return;
   var T = 20, SCHED = [5, 10, 15, 20];
   var stage = document.getElementById('cur-stage');
-  var stageVal = document.getElementById('cur-stage-val');
-  var nVal = document.getElementById('cur-n-val');
-  var anyBtn = document.getElementById('cur-any');
-  var lateBtn = document.getElementById('cur-late');
-  var shuffleBtn = document.getElementById('cur-shuffle');
-  var mode = 'any', seed = 3, subsets = {};
+  var anyBtn = document.getElementById('cur-any'), lateBtn = document.getElementById('cur-late'), shuffleBtn = document.getElementById('cur-shuffle');
+  var readout = document.getElementById('cur-readout');
+  var stageCap = document.getElementById('cur-stage-cap'), modeCap = document.getElementById('cur-mode-cap');
+  var ticks = document.querySelectorAll('#cur-widget .tick');
+  var mode = 'any', seed = 3, cells = [];
+  var perm = [];
 
-  // order[0..T-1]: position 0 is t = T (earliest denoising step)
-  function subsetFor(n) {
-    var key = mode + n + ':' + seed;
-    if (subsets[key]) return subsets[key];
-    var set = {};
-    if (mode === 'late') { for (var i = T - n; i < T; i++) set[i] = true; }
-    else {
-      // nested random subsets: one random permutation per seed, first n taken
-      var r = rng(seed * 101 + 5), perm = [];
-      for (i = 0; i < T; i++) perm.push(i);
-      for (i = T - 1; i > 0; i--) { var j = Math.floor(r() * (i + 1)); var tmp = perm[i]; perm[i] = perm[j]; perm[j] = tmp; }
-      for (i = 0; i < n; i++) set[perm[i]] = true;
-    }
-    subsets[key] = set;
+  function makePerm() {
+    var r = rng(seed * 101 + 5), i;
+    perm = []; for (i = 0; i < T; i++) perm.push(i);
+    for (i = T - 1; i > 0; i--) { var j = Math.floor(r() * (i + 1)); var tmp = perm[i]; perm[i] = perm[j]; perm[j] = tmp; }
+  }
+  function activeSet(n) {
+    var set = {}, i;
+    if (mode === 'late') for (i = T - n; i < T; i++) set[i] = true;
+    else for (i = 0; i < n; i++) set[perm[i]] = true;  // nested subsets as the stage grows
     return set;
   }
-
-  function draw() {
+  function build() {
     while (svg.childNodes.length > 2) svg.removeChild(svg.lastChild);
-    var n = SCHED[parseInt(stage.value, 10) - 1];
-    var set = subsetFor(n);
-    var X0 = 30, X1 = 700, slot = (X1 - X0) / T, bw = slot - 6;
-    var BASE = 170, MAXH = 120;
-    el('text', { x: X0, y: 22, 'class': 'cur-axis' }, svg).textContent = 'Stage ' + stage.value + ': ' + n + ' of ' + T + ' timesteps receive gradient updates';
-    for (var i = 0; i < T; i++) {
-      var x = X0 + i * slot + 3;
-      var reach = Math.pow(0.9, i); // schematic decay, early steps highest
-      var h = MAXH * reach;
-      var on = !!set[i];
-      el('rect', { x: x, y: BASE, width: bw, height: 28, rx: 4, fill: on ? '#1a73e8' : '#dfe1e5' }, svg);
-      var lab = el('text', { x: x + bw / 2, y: BASE + 18, 'text-anchor': 'middle', 'class': 'cur-axis', fill: on ? '#fff' : '#5f6368' }, svg);
-      lab.textContent = (T - i);
-      lab.setAttribute('style', on ? 'fill:#fff' : '');
-      el('rect', { x: x, y: BASE - 6 - h, width: bw, height: h, rx: 2, fill: '#f4b183', opacity: on ? 0.95 : 0.35 }, svg);
-      if (on) el('rect', { x: x, y: BASE - 6 - h, width: bw, height: h, rx: 2, fill: 'none', stroke: '#1a73e8', 'stroke-width': 1.5 }, svg);
+    var W = Math.max(280, Math.round(svg.getBoundingClientRect().width));
+    var desktop = W >= 560;
+    var pad = 4, gap = desktop ? 5 : 2, cw = (W - 2 * pad - gap * (T - 1)) / T;
+    var ch = desktop ? 38 : 34, AH = desktop ? 104 : 86, top = 6, base = top + AH, H = base + 28;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    var defs = el('defs', {}, svg);
+    var gr = el('linearGradient', { id: 'reachGrad', x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+    el('stop', { offset: '0%', 'stop-color': '#f2a766', 'stop-opacity': 0.55 }, gr);
+    el('stop', { offset: '100%', 'stop-color': '#f7c9a1', 'stop-opacity': 0.08 }, gr);
+    // reach area, schematic exponential decay along the timestep axis
+    var N = 60, top1 = [], x;
+    for (var q = 0; q <= N; q++) {
+      x = pad + (W - 2 * pad) * q / N;
+      var idx = (x - pad) / (cw + gap) - 0.5;
+      top1.push([x, base - AH * Math.pow(0.9, Math.max(0, idx))]);
     }
-    el('text', { x: X0, y: BASE + 50, 'class': 'cur-axis' }, svg).textContent = 'early: t = T (high generative reach)';
-    el('text', { x: X1, y: BASE + 50, 'class': 'cur-axis', 'text-anchor': 'end' }, svg).textContent = 'late: t = 1 (low reach)';
-    el('text', { x: 360, y: BASE + 50, 'class': 'cur-axis', 'text-anchor': 'middle' }, svg).textContent = '';
-    stageVal.textContent = stage.value;
-    nVal.textContent = n;
+    var dstr = 'M' + pad + ' ' + base + ' ' + top1.map(function (pt) { return 'L' + pt[0].toFixed(1) + ' ' + pt[1].toFixed(1); }).join(' ') + ' L' + (W - pad) + ' ' + base + ' Z';
+    el('path', { d: dstr, fill: 'url(#reachGrad)' }, svg);
+    el('path', { d: 'M' + top1.map(function (pt) { return pt[0].toFixed(1) + ' ' + pt[1].toFixed(1); }).join(' L'), fill: 'none', stroke: '#e8a06a', 'stroke-width': 1.5, 'stroke-opacity': 0.8 }, svg);
+    var rl = el('text', { x: W - pad - 2, y: base - ch - 14, 'class': 'fk-axis', 'text-anchor': 'end', fill: '#c26a2c', style: 'fill:#c26a2c' }, svg);
+    rl.textContent = 'generative reach';
+    // cells
+    cells = [];
+    for (var i = 0; i < T; i++) {
+      var c = el('rect', { x: pad + i * (cw + gap), y: base - ch - 2, width: cw, height: ch, rx: desktop ? 6 : 4, 'class': 'cell' }, svg);
+      c.appendChild(document.createElementNS(NS, 'title')).textContent = 't = ' + (T - i);
+      cells.push(c);
+    }
+    // axis labels
+    var ay = base + 20;
+    var l1 = el('text', { x: pad, y: ay, 'class': 'fk-axis' }, svg); l1.textContent = desktop ? 't = T  (early)' : 't = T';
+    var l2 = el('text', { x: W - pad, y: ay, 'class': 'fk-axis', 'text-anchor': 'end' }, svg); l2.textContent = desktop ? 't = 1  (late)' : 't = 1';
+    update(true);
+  }
+  function showOnly(parent, idx) {
+    for (var j = 0; j < parent.children.length; j++) parent.children[j].className = j === idx ? 'on' : '';
+  }
+  function update(instant) {
+    var si = parseInt(stage.value, 10) - 1, n = SCHED[si], set = activeSet(n);
+    cells.forEach(function (c, i) {
+      c.style.transitionDelay = instant ? '0ms' : (mode === 'late' ? (T - i) * 8 : i * 10) + 'ms';
+      c.setAttribute('class', 'cell' + (set[i] ? ' on' : ''));
+      var t = c.firstChild; if (t) t.textContent = 't = ' + (T - i) + (set[i] ? ' · updated' : ' · frozen');
+    });
+    readout.innerHTML = '<b>' + n + '</b> of ' + T + ' timesteps updated · stage ' + (si + 1) + ' of 4';
+    showOnly(stageCap, si);
+    showOnly(modeCap, mode === 'any' ? 0 : 1);
+    for (var j = 0; j < ticks.length; j++) ticks[j].className = 'tick' + (j === si ? ' cur' : '');
   }
   function setMode(m) {
     mode = m;
-    anyBtn.classList.toggle('seg-on', m === 'any');
-    lateBtn.classList.toggle('seg-on', m === 'late');
-    anyBtn.setAttribute('aria-pressed', m === 'any');
-    lateBtn.setAttribute('aria-pressed', m === 'late');
-    shuffleBtn.disabled = m === 'late';
-    draw();
+    anyBtn.className = m === 'any' ? 'seg-on' : ''; lateBtn.className = m === 'late' ? 'seg-on' : '';
+    anyBtn.setAttribute('aria-pressed', m === 'any'); lateBtn.setAttribute('aria-pressed', m === 'late');
+    shuffleBtn.disabled = m === 'late'; shuffleBtn.style.opacity = m === 'late' ? 0.45 : 1;
+    update();
   }
-  stage.addEventListener('input', draw);
+  stage.addEventListener('input', function () { update(); });
+  Array.prototype.forEach.call(ticks, function (t) {
+    t.addEventListener('click', function () { stage.value = t.getAttribute('data-stage'); update(); });
+  });
   anyBtn.addEventListener('click', function () { setMode('any'); });
   lateBtn.addEventListener('click', function () { setMode('late'); });
-  shuffleBtn.addEventListener('click', function () { seed++; draw(); });
-  draw();
+  shuffleBtn.addEventListener('click', function () { seed++; makePerm(); update(); });
+  var rz = null;
+  window.addEventListener('resize', function () {
+    if (rz) cancelAnimationFrame(rz);
+    rz = requestAnimationFrame(function () { rz = null; build(); });
+  });
+  makePerm();
+  build();
 }
 
 /* ---------- Results explorer ---------- */

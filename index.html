@@ -48,7 +48,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
-  <link rel="stylesheet" href="./static/css/index.css?v=2">
+  <link rel="stylesheet" href="./static/css/index.css?v=3">
   <link rel="icon" href="./static/images/favicon.svg">
 
   <script type="application/ld+json">
@@ -225,50 +225,88 @@
   </div>
 
   <h3 id="fk-explainer">Interactive: FK branch &amp; resample</h3>
+  <p class="widget-intro">Rewards arrive only at the end of a denoising trajectory, so a single rollout is a sparse learning signal. Feynman&ndash;Kac path guidance spends one shared trajectory prefix on <i>k</i> possible futures: promising partial trajectories are branched and unpromising ones pruned during training, so rare high-reward branches survive instead of being averaged away.</p>
   <div class="widget" id="fk-widget">
     <p class="nojs-note">This diagram is interactive and needs JavaScript. See panel (A) of the overview figure above for the static version.</p>
     <div class="widget-ui js-only">
       <div class="controls">
-        <button type="button" class="btn" id="fk-play" aria-pressed="false">Play</button>
-        <button type="button" class="btn" id="fk-step">Next resample</button>
-        <button type="button" class="btn ghost" id="fk-reset">Reset</button>
-        <label class="slider-label">Particles <i>k</i> = <b id="fk-k-val">4</b>
+        <div class="btn-group">
+          <button type="button" class="btn primary" id="fk-play" aria-pressed="false">Play</button>
+          <button type="button" class="btn" id="fk-step">Next resample</button>
+          <button type="button" class="btn" id="fk-reset">Reset</button>
+        </div>
+        <label class="slider-label">Particles <i>k</i>
           <input type="range" id="fk-k" min="2" max="8" step="1" value="4" aria-label="Number of particles k">
+          <b id="fk-k-val" class="val">4</b>
         </label>
       </div>
-      <svg id="fk-svg" viewBox="0 0 720 320" role="img" aria-labelledby="fk-title fk-desc" preserveAspectRatio="xMidYMid meet">
+      <svg id="fk-svg" viewBox="0 0 720 315" role="img" aria-labelledby="fk-title fk-desc" preserveAspectRatio="xMidYMid meet">
         <title id="fk-title">Feynman-Kac branch and resample diagram</title>
         <desc id="fk-desc">A denoising trajectory from noise at the left to the sample at the right. One shared prefix branches into k particles at the 5th step; at steps 8, 12 and 16 particles are scored and low-weight ones are replaced by copies of high-weight ones.</desc>
       </svg>
-      <p class="legend"><span class="sw sw-live"></span> surviving lineage &nbsp; <span class="sw sw-dead"></span> pruned path &nbsp; <span class="sw sw-best"></span> best final particle &nbsp; <span class="sw sw-worst"></span> worst final particle</p>
+      <div class="narration swap" id="fk-narr" aria-live="polite">
+        <span class="on"><em>1 &middot; Shared prefix</em> Denoise from Gaussian noise <i>x<sub>T</sub></i> as a single trajectory up to the branch step <i>t<sub>b</sub></i>; this early compute is paid once.</span>
+        <span><em>2 &middot; Branch</em> Replicate the state at <i>t<sub>b</sub></i> into <i>k</i> particles that continue with stochastic denoising and diverge.</span>
+        <span><em>3 &middot; Score</em> Each particle&rsquo;s DDIM estimate x&#770;<sub>0</sub> is rewarded; potential <i>G</i>&nbsp;=&nbsp;exp(&lambda;&middot;max(<i>r</i>(x&#770;<sub>0</sub>), <i>w</i><sub>prev</sub>)).</span>
+        <span><em>4 &middot; Resample</em> Low-weight particles are replaced by copies of high-weight ones (badges show the number of copies); pruned paths fade.</span>
+        <span><em>5 &middot; Contrastive pair</em> The best and worst final trajectories are kept and become the contrastive training pair for the policy update.</span>
+      </div>
+      <p class="legend">
+        <span><i class="dot d-prefix"></i>shared prefix</span>
+        <span><i class="dot d-live"></i>active particle</span>
+        <span><i class="dot d-dead"></i>pruned</span>
+        <span><i class="dot d-best"></i>best</span>
+        <span><i class="dot d-worst"></i>worst</span>
+        <span><i class="dot d-guide"></i>resample point</span>
+      </p>
     </div>
     <p class="note">Particles share one denoising prefix, branch at <i>t<sub>b</sub></i> (the 5th denoising step), and are scored at the resample steps 8, 12 and 16 of <i>T</i>&nbsp;=&nbsp;20 (0.4, 0.6 and 0.8 of <i>T</i>)
       with the max potential <i>w<sup>i</sup></i>&nbsp;=&nbsp;max(<i>r</i>(x&#770;<sub>0</sub><sup><i>i</i></sup>), <i>w</i><sub>prev</sub><sup><i>i</i></sup>) and FK scale &lambda;&nbsp;=&nbsp;2.
       Low-weight particles are replaced by multinomially resampled copies of high-weight ones; at the end, the best and worst trajectories per prompt are kept as the contrastive pair for the policy update.
-      <span class="faint">The trajectories drawn here are a schematic simulation, not data from the paper.</span></p>
+      <span class="faint">The trajectories drawn here are a schematic simulation, not data from the paper; hover a node or a guide for details.</span> See Sec.&nbsp;4.3 and Fig.&nbsp;3(A); the full algorithm and settings (<i>k</i>&nbsp;=&nbsp;4, <i>t<sub>b</sub></i>&nbsp;=&nbsp;5, resampling at steps 8, 12, 16) are in the supplementary.</p>
   </div>
 
   <h3 id="curriculum-explainer">Interactive: sparse incremental curriculum</h3>
+  <p class="widget-intro">Two results shape which timesteps to update. <b>Proposition&nbsp;1 (Generative Reach):</b> for a fixed budget of <i>N</i> updated timesteps, uniformly sampled steps perturb the output more than late-only steps, so early steps carry the most leverage. <b>Proposition&nbsp;2 (Volume Preservation):</b> a sparse update set preserves the prior&rsquo;s probability volume better than updating every step, which protects diversity. Together they motivate starting sparse and growing the set.</p>
   <div class="widget" id="cur-widget">
     <p class="nojs-note">This widget is interactive and needs JavaScript. In the paper, the number of updated timesteps grows over four stages: 5, 10, 15 and 20 of <i>T</i>&nbsp;=&nbsp;20 (see panel (B) of the overview figure).</p>
     <div class="widget-ui js-only">
       <div class="controls">
-        <label class="slider-label">Stage <b id="cur-stage-val">1</b> of 4: update <b id="cur-n-val">5</b> of 20 timesteps
-          <input type="range" id="cur-stage" min="1" max="4" step="1" value="1" aria-label="Curriculum stage">
-        </label>
         <div class="seg" role="group" aria-label="Timestep strategy">
-          <button type="button" class="btn seg-on" id="cur-any" aria-pressed="true">Any-N (iADD)</button>
-          <button type="button" class="btn" id="cur-late" aria-pressed="false">Late-only</button>
+          <button type="button" class="seg-on" id="cur-any" aria-pressed="true">Any-N (iADD)</button>
+          <button type="button" id="cur-late" aria-pressed="false">Late-only</button>
         </div>
-        <button type="button" class="btn ghost" id="cur-shuffle">Re-sample subset</button>
+        <button type="button" class="btn" id="cur-shuffle" aria-label="Shuffle the random timestep subset">Shuffle</button>
+        <span class="readout" id="cur-readout" aria-live="polite"></span>
       </div>
-      <svg id="cur-svg" viewBox="0 0 720 230" role="img" aria-labelledby="cur-title cur-desc" preserveAspectRatio="xMidYMid meet">
+      <svg id="cur-svg" viewBox="0 0 720 150" role="img" aria-labelledby="cur-title cur-desc" preserveAspectRatio="xMidYMid meet">
         <title id="cur-title">Incremental timestep curriculum</title>
-        <desc id="cur-desc">A strip of 20 denoising timesteps from t=T on the left to t=1 on the right. Highlighted timesteps receive gradient updates at the selected stage. A decaying bar overlay marks the schematic generative reach of each timestep, highest for early steps.</desc>
+        <desc id="cur-desc">A strip of 20 denoising timesteps from t=T on the left to t=1 on the right. Highlighted timesteps receive gradient updates at the selected stage. A decaying shaded area behind the strip marks the schematic generative reach of each timestep, highest for early steps.</desc>
       </svg>
-      <p class="legend"><span class="sw sw-live"></span> updated this stage &nbsp; <span class="sw sw-frozen"></span> frozen &nbsp; <span class="sw sw-reach"></span> generative reach (schematic)</p>
+      <div class="stage-slider">
+        <input type="range" id="cur-stage" min="1" max="4" step="1" value="1" aria-label="Curriculum stage">
+        <button type="button" class="tick" data-stage="1" style="left:calc(10px + (100% - 20px) * 0)"><span>Stage 1</span><b>N = 5</b></button>
+        <button type="button" class="tick" data-stage="2" style="left:calc(10px + (100% - 20px) * 0.3333)"><span>Stage 2</span><b>N = 10</b></button>
+        <button type="button" class="tick" data-stage="3" style="left:calc(10px + (100% - 20px) * 0.6667)"><span>Stage 3</span><b>N = 15</b></button>
+        <button type="button" class="tick" data-stage="4" style="left:calc(10px + (100% - 20px) * 1)"><span>Stage 4</span><b>N = 20</b></button>
+      </div>
+      <div class="narration swap" id="cur-stage-cap" aria-live="polite">
+        <span class="on"><em>Stage 1 &middot; N = 5</em> A sparse set; any-N sampling can include early, high-reach steps that move the distribution most while preserving the prior&rsquo;s volume.</span>
+        <span><em>Stage 2 &middot; N = 10</em> The curriculum widens; early high-reach steps still dominate the update&rsquo;s influence.</span>
+        <span><em>Stage 3 &middot; N = 15</em> Most of the trajectory is now updated as training stabilizes.</span>
+        <span><em>Stage 4 &middot; N = 20</em> All <i>T</i>&nbsp;=&nbsp;20 timesteps are active, refining local manifold details once the distribution has stabilized.</span>
+      </div>
+      <div class="narration swap mode" id="cur-mode-cap" aria-live="polite">
+        <span class="on"><em>Any-N (iADD)</em> <i>N</i> timesteps are drawn at random from all <i>T</i>, so early high-reach steps can be updated (Prop.&nbsp;1) while the set stays sparse (Prop.&nbsp;2).</span>
+        <span><em>Late-only (B&sup2;-DiffuRL)</em> Updates are confined to the last <i>N</i> steps, which by Prop.&nbsp;1 perturbs the output less than uniformly sampled steps; in the paper&rsquo;s ablation, any-<i>N</i> consistently gives higher IS than late-<i>N</i>.</span>
+      </div>
+      <p class="legend">
+        <span><i class="dot d-on"></i>updated this stage</span>
+        <span><i class="dot d-off"></i>frozen</span>
+        <span><i class="dot d-reach"></i>generative reach (schematic)</span>
+      </p>
     </div>
-    <p class="note">Following the paper, each stage randomly selects <i>N</i> of the 20 denoising timesteps to update (<i>N</i> = 5, 10, 15, 20; 10 epochs per stage). Because a perturbation at an early timestep (<i>t</i>&nbsp;~&nbsp;<i>T</i>) propagates through more of the reverse process, early steps have high generative reach, so the curriculum starts with a sparse set that can reach early steps and grows it only to refine local details once the distribution has stabilized. Late-only updates (as in B&sup2;-DiffuRL) instead restrict the set to the last <i>N</i> steps. <span class="faint">Bar heights are schematic; the paper proves the ordering, not a specific decay curve.</span></p>
+    <p class="note">Following the paper, each stage randomly selects <i>N</i> of the 20 denoising timesteps to update (<i>N</i> = 5, 10, 15, 20; 10 epochs per stage). Because a perturbation at an early timestep (<i>t</i>&nbsp;~&nbsp;<i>T</i>) propagates through more of the reverse process, early steps have high generative reach, so the curriculum starts with a sparse set that can reach early steps and grows it only to refine local details once the distribution has stabilized. Late-only updates (as in B&sup2;-DiffuRL) instead restrict the set to the last <i>N</i> steps. <span class="faint">The shaded decay is schematic; the paper proves the ordering, not a specific curve.</span> See Sec.&nbsp;4.2 (Props.&nbsp;1&ndash;2, Remark&nbsp;2), Fig.&nbsp;3(B), the schedule in Sec.&nbsp;5.1, and the timestep ablations in Sec.&nbsp;5.5.</p>
   </div>
 </section>
 
@@ -450,6 +488,6 @@
   </p>
 </footer>
 
-<script src="./static/js/index.js?v=2"></script>
+<script src="./static/js/index.js?v=3"></script>
 </body>
 </html>
