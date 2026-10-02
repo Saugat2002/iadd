@@ -26,7 +26,7 @@ RL post-training of diffusion models (e.g. DDPO) optimizes a reverse diffusion p
 Each method is evaluated at its best reward-diversity operating point. Baselines: pretrained model, DDPO, B2-DiffuRL.
 
 - Image generation (CLIPScore reward): iADD reward 0.3553 vs DDPO 0.3417 and B2-DiffuRL 0.3452; Inception Score 1.3241 vs 1.2786 and 1.2728; rarity 66.85% vs 24.81% and 24.22%; reward-diversity AUC 77.7% vs 53.8% and 58.7%.
-- 3D indoor scene: collision 59.20% vs DDPO 63.39% and B2-DiffuRL 64.06% (pretrained 53.87%); CKL 6.13% vs 7.73% and 6.28%.
+- 3D indoor scene: collision 59.20% vs DDPO 63.39% and B2-DiffuRL 64.06% (pretrained 53.87%); CKL 6.13% vs 7.726% and 6.278%.
 - Vanishing point: reward 0.7763 vs 0.6815 and 0.6486; rarity 95.11% vs 21.33% and 31.11%.
 - Against GRPO-style methods (animal-activities template): iADD AUC 83.7% vs DanceGRPO 39.3% and BranchGRPO 43.73%; the iADD+GRPO hybrid reaches the highest CLIP (0.4126) and rarity (88.33%).
 
