@@ -168,6 +168,7 @@
  ]
 }
 </script>
+<link rel="alternate" type="text/markdown" title="LLM-readable summary (llms.txt)" href="llms.txt">
 </head>
 <body>
 
@@ -215,6 +216,23 @@
 </header>
 
 <main>
+
+<!-- ===================== TLDR ===================== -->
+<section id="tldr" class="section">
+<style>#tldr .kf{max-width:860px;margin:0 auto;text-align:left;background:#f5f7f9;border:1px solid #e3e6e8;border-radius:12px;padding:18px 26px}#tldr .kf p{margin:.2em 0 .6em}#tldr .kf ul{margin:0;padding-left:1.2em}#tldr .kf li{margin:.35em 0}</style>
+  <h2>Key facts</h2>
+  <div class="kf">
+    <p><b>TL;DR:</b> iADD fine-tunes diffusion models with reinforcement learning while keeping diversity: it updates a sparse, incrementally chosen set of timesteps and uses Feynman-Kac branch/resample during training, avoiding the mode collapse and reward hacking of DDPO-style methods.</p>
+    <ul>
+      <li><b>Task:</b> RL fine-tuning / reward alignment of diffusion models (diffusion policy optimization, RLHF for diffusion).</li>
+      <li><b>Method:</b> sparse incremental timestep updates + training-time discrete Feynman-Kac (FK) branching; no preference data and no test-time scaling.</li>
+      <li><b>Rarity (images):</b> 66.85% vs 24.81% for DDPO.</li>
+      <li><b>With GRPO:</b> iADD+GRPO raises CLIPScore 0.3886 &rarr; 0.4126 and rarity 61.67% &rarr; 88.33% over DanceGRPO.</li>
+      <li><b>Domains:</b> Stable Diffusion v1.4 + LoRA (CLIPScore), vanishing-point correction, 3D indoor scene synthesis (MiDiffusion, 3D-FRONT).</li>
+      <li><b>Paper:</b> <a href="https://arxiv.org/abs/2610.01789">arXiv:2610.01789</a></li>
+    </ul>
+  </div>
+</section>
 
 <!-- ===================== MOTIVATION ===================== -->
 <section id="motivation" class="section wide">
