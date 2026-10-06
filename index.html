@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>iADD: Improving Alignment and Diversity in Diffusion Policy Optimization</title>
-  <meta name="description" content="iADD improves RL fine-tuning of diffusion models: sparse incremental timestep updates plus Feynman-Kac branch/resample training give better alignment-diversity tradeoffs.">
-  <meta name="keywords" content="iADD, diffusion policy optimization, reinforcement learning, DDPO, Feynman-Kac, particle filtering, branch and resample, diffusion models, alignment-diversity tradeoff, mode collapse, rare events, vanishing point correction, 3D scene generation, Stable Diffusion, LoRA, GRPO">
+  <title>iADD: Improving Alignment and Diversity in Diffusion Policy Optimization (RL Fine-Tuning)</title>
+  <meta name="description" content="iADD: diffusion policy optimization that improves both alignment and diversity when fine-tuning diffusion models with reinforcement learning (DDPO, RLHF for diffusion). Sparse incremental timestep updates plus training-time Feynman-Kac branch/resample reduce mode collapse and reward hacking; works with GRPO (DanceGRPO).">
+  <meta name="keywords" content="iADD, diffusion policy optimization, denoising diffusion policy optimization, DDPO, DPOK, training diffusion models with reinforcement learning, fine-tuning diffusion models with reinforcement learning, RL fine-tuning diffusion models, reinforcement learning for diffusion models, RLHF diffusion, RLHF stable diffusion, reward fine-tuning diffusion models, alignment-diversity tradeoff, mode collapse, reward hacking diffusion, Feynman-Kac, Feynman-Kac steering, FK steering, sequential Monte Carlo diffusion, particle filtering, branch and resample, GRPO diffusion, DanceGRPO, BranchGRPO, B2-DiffuRL, inference-time scaling diffusion, Stable Diffusion, LoRA, text-to-image alignment, vanishing point correction, 3D scene generation">
   <meta name="author" content="Ashok Prasad Neupane, Saugat Adhikari, Pramish Paudel, Ajad Chhatkuli, Danda Pani Paudel">
   <meta name="theme-color" content="#ffffff">
 
@@ -88,6 +88,86 @@
     "encodingFormat": "video/mp4"
   }
   </script>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "FAQPage",
+ "mainEntity": [
+  {
+   "@type": "Question",
+   "name": "What is iADD?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "iADD is a reinforcement learning fine-tuning method for diffusion models that combines an incremental, sparse timestep-update curriculum with discrete-time Feynman-Kac branching during training, to improve alignment and diversity together."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Why does RL fine-tuning of diffusion models cause mode collapse?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Optimizing a reward over all denoising steps pushes the model away from its prior and toward a few high-reward modes. iADD's sparse updates preserve more of the prior's probability volume (log-det -25,963 sparse vs -27,568 dense)."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Why not update only late timesteps like B2-DiffuRL?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "iADD's Proposition 1 shows uniform timestep sampling gives more generative reach than late-only updates; in ablations, updating any N timesteps beats updating the last N on Inception Score."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "How is iADD different from Feynman-Kac (FK) steering?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "FK steering applies Feynman-Kac guidance at inference time. iADD uses it during training: low-potential branches are pruned for alignment and promising ones are branched for diversity, so no test-time scaling is needed."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "DDPO vs iADD: what changes?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "DDPO fine-tunes the full denoising trajectory. iADD updates sparse, incrementally chosen timesteps and adds training-time FK branch/resample, reaching 66.85% rarity vs 24.81% for DDPO on images."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Does iADD work with GRPO (DanceGRPO)?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Yes. iADD+GRPO raises CLIPScore from 0.3886 (DanceGRPO) to 0.4126 and rarity from 61.67% to 88.33%."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Does iADD reduce reward hacking?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "In 3D scenes it has fewer collisions at matched reward than DDPO and B2-DiffuRL; on images, baselines drift to cartoonish, over-saturated outputs."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Does iADD need preference data or extra inference compute?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "No. It optimizes a reward function (no human preference pairs, unlike Diffusion-DPO) and adds no test-time scaling."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "What tasks was iADD tested on?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Text-to-image generation with Stable Diffusion v1.4 + LoRA and a CLIPScore reward, vanishing-point correction, and 3D indoor scene synthesis (MiDiffusion on 3D-FRONT)."
+   }
+  }
+ ]
+}
+</script>
 </head>
 <body>
 
@@ -446,6 +526,30 @@
         vanishing point. iADD converges perspective lines while preserving texture.</figcaption>
     </figure>
   </div>
+</section>
+
+<!-- ===================== FAQ ===================== -->
+<section id="faq" class="section">
+  <h2>FAQ: RL fine-tuning of diffusion models without losing diversity</h2>
+  <p>iADD is a <b>diffusion policy optimization</b> method for <b>fine-tuning diffusion models with reinforcement learning</b> (RLHF for diffusion). It builds on DDPO, DPOK and B2-DiffuRL, brings <b>Feynman-Kac (FK) steering</b> / sequential Monte Carlo ideas into training, and combines with GRPO methods such as DanceGRPO and BranchGRPO.</p>
+  <h3>What is iADD?</h3>
+  <p>iADD is a reinforcement learning fine-tuning method for diffusion models that combines an incremental, sparse timestep-update curriculum with discrete-time Feynman-Kac branching during training, to improve alignment and diversity together.</p>
+  <h3>Why does RL fine-tuning of diffusion models cause mode collapse?</h3>
+  <p>Optimizing a reward over all denoising steps pushes the model away from its prior and toward a few high-reward modes. iADD&#x27;s sparse updates preserve more of the prior&#x27;s probability volume (log-det -25,963 sparse vs -27,568 dense).</p>
+  <h3>Why not update only late timesteps like B2-DiffuRL?</h3>
+  <p>iADD&#x27;s Proposition 1 shows uniform timestep sampling gives more generative reach than late-only updates; in ablations, updating any N timesteps beats updating the last N on Inception Score.</p>
+  <h3>How is iADD different from Feynman-Kac (FK) steering?</h3>
+  <p>FK steering applies Feynman-Kac guidance at inference time. iADD uses it during training: low-potential branches are pruned for alignment and promising ones are branched for diversity, so no test-time scaling is needed.</p>
+  <h3>DDPO vs iADD: what changes?</h3>
+  <p>DDPO fine-tunes the full denoising trajectory. iADD updates sparse, incrementally chosen timesteps and adds training-time FK branch/resample, reaching 66.85% rarity vs 24.81% for DDPO on images.</p>
+  <h3>Does iADD work with GRPO (DanceGRPO)?</h3>
+  <p>Yes. iADD+GRPO raises CLIPScore from 0.3886 (DanceGRPO) to 0.4126 and rarity from 61.67% to 88.33%.</p>
+  <h3>Does iADD reduce reward hacking?</h3>
+  <p>In 3D scenes it has fewer collisions at matched reward than DDPO and B2-DiffuRL; on images, baselines drift to cartoonish, over-saturated outputs.</p>
+  <h3>Does iADD need preference data or extra inference compute?</h3>
+  <p>No. It optimizes a reward function (no human preference pairs, unlike Diffusion-DPO) and adds no test-time scaling.</p>
+  <h3>What tasks was iADD tested on?</h3>
+  <p>Text-to-image generation with Stable Diffusion v1.4 + LoRA and a CLIPScore reward, vanishing-point correction, and 3D indoor scene synthesis (MiDiffusion on 3D-FRONT).</p>
 </section>
 
 <!-- ===================== BIBTEX ===================== -->
