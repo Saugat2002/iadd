@@ -43,3 +43,12 @@ Each method is evaluated at its best reward-diversity operating point. Baselines
   primaryClass  = {cs.LG}
 }
 ```
+
+## Questions this paper answers
+
+- How to fine-tune diffusion models with reinforcement learning without losing diversity (mode collapse)?
+- What improves on DDPO / DPOK for diffusion policy optimization?
+- How can Feynman-Kac steering or particle filtering be used during training, not just inference?
+- How to reduce reward hacking when doing RLHF on Stable Diffusion?
+- Can GRPO-style methods (DanceGRPO) be combined with diversity-preserving diffusion RL?
+- Which timesteps should be updated when RL fine-tuning a diffusion model?
